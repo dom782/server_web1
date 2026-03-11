@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ScanPC">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="/manifest.json">
+<title>ScanPC</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;500;600;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d;
+  --surface:#141414;
+  --surface2:#1c1c1c;
+  --border:#2a2a2a;
+  --accent:#f0c040;
+  --accent2:#e05c00;
+  --green:#2ecc71;
+  --red:#e74c3c;
+  --text:#f0f0f0;
+  --text-dim:#666;
+  --mono:'Share Tech Mono',monospace;
+  --sans:'Barlow',sans-serif;
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
+
+/* ── HEADER ── */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{
+  width:32px;height:32px;
+  background:var(--accent);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.brand-name{font-family:var(--mono);font-size:16px;letter-spacing:2px;color:var(--accent)}
+.conn-pill{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px;border-radius:20px;
+  background:var(--surface2);border:1px solid var(--border);
+  font-family:var(--mono);font-size:10px;color:var(--text-dim);
+  transition:all .3s;
+}
+.conn-pill.connected{color:var(--green);border-color:var(--green);}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* ── SETUP ── */
+#setup{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:32px 24px;gap:20px;
+}
+.setup-icon{font-size:52px;filter:grayscale(0.3)}
+.setup-title{font-size:22px;font-weight:700;letter-spacing:-0.5px;text-align:center}
+.setup-sub{font-size:13px;color:var(--text-dim);text-align:center;line-height:1.6;font-family:var(--mono)}
+.field{width:100%;display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px}
+.field input{
+  width:100%;padding:13px 15px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);
+  font-family:var(--sans);font-size:15px;outline:none;
+  transition:border-color .2s;
+}
+.field input:focus{border-color:var(--accent)}
+.btn-main{
+  width:100%;padding:15px;border:none;border-radius:8px;
+  background:var(--accent);color:#0d0d0d;
+  font-family:var(--sans);font-size:15px;font-weight:700;
+  cursor:pointer;letter-spacing:0.5px;
+  transition:opacity .2s,transform .1s;
+}
+.btn-main:active{transform:scale(.98);opacity:.9}
+
+/* ── MAIN APP ── */
+#mainApp{flex:1;display:none;flex-direction:column;overflow:hidden}
+#mainApp.show{display:flex}
+
+/* ── SCANNER VIEW ── */
+#scannerView{
+  position:relative;
+  background:#000;
+  flex-shrink:0;
+  overflow:hidden;
+}
+#video{width:100%;display:block;object-fit:cover}
+#canvas{display:none}
+
+/* Mirino overlay */
+.viewfinder{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
+}
+.vf-frame{
+  width:220px;height:220px;
+  position:relative;
+}
+.vf-corner{
+  position:absolute;width:28px;height:28px;
+  border-color:var(--accent);border-style:solid;
+  opacity:0.9;
+}
+.vf-corner.tl{top:0;left:0;border-width:3px 0 0 3px}
+.vf-corner.tr{top:0;right:0;border-width:3px 3px 0 0}
+.vf-corner.bl{bottom:0;left:0;border-width:0 0 3px 3px}
+.vf-corner.br{bottom:0;right:0;border-width:0 3px 3px 0}
+
+/* Linea di scan animata */
+.scan-line{
+  position:absolute;left:10px;right:10px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  top:10px;
+  animation:scanAnim 2s ease-in-out infinite;
+  box-shadow:0 0 8px var(--accent);
+}
+@keyframes scanAnim{
+  0%{top:10px;opacity:1}
+  50%{top:calc(100% - 12px);opacity:1}
+  100%{top:10px;opacity:1}
+}
+
+/* Flash feedback */
+.scan-flash{
+  position:absolute;inset:0;
+  background:var(--accent);
+  opacity:0;pointer-events:none;
+  transition:opacity .05s;
+}
+.scan-flash.flash{opacity:0.3}
+
+/* Chip ultimo codice */
+.last-scan-chip{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);
+  border:1px solid var(--accent);border-radius:6px;
+  padding:6px 14px;font-family:var(--mono);font-size:12px;color:var(--accent);
+  white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transition:opacity .2s;pointer-events:none;
+}
+.last-scan-chip.show{opacity:1}
+
+/* Toolbar scanner */
+.scanner-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.scan-counter{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.scan-counter span{color:var(--accent);font-size:15px;font-weight:bold}
+.toolbar-actions{display:flex;gap:8px}
+.tb-btn{
+  padding:7px 12px;border-radius:6px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.tb-btn:active{transform:scale(.96)}
+.tb-btn.danger{border-color:var(--red);color:var(--red)}
+.tb-btn.primary{border-color:var(--accent);color:var(--accent)}
+.tb-btn:disabled{opacity:.35;cursor:default}
+
+/* Lista codici */
+#codeList{
+  flex:1;overflow-y:auto;
+  padding:10px 12px;
+  display:flex;flex-direction:column;gap:6px;
+}
+#codeList::-webkit-scrollbar{width:3px}
+#codeList::-webkit-scrollbar-thumb{background:var(--border)}
+
+.code-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:10px 12px;
+  animation:slideIn .15s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+
+.code-num{
+  font-family:var(--mono);font-size:10px;color:var(--text-dim);
+  width:22px;text-align:right;flex-shrink:0;
+}
+.code-type-badge{
+  font-family:var(--mono);font-size:9px;padding:2px 6px;
+  border-radius:3px;flex-shrink:0;
+  background:var(--surface);border:1px solid var(--border);color:var(--text-dim);
+}
+.code-type-badge.qr{border-color:#3a9df8;color:#3a9df8}
+.code-type-badge.ean,
+.code-type-badge.upc{border-color:var(--accent2);color:var(--accent2)}
+.code-type-badge.code128,
+.code-type-badge.code39{border-color:#a855f7;color:#a855f7}
+
+.code-value{
+  flex:1;font-family:var(--mono);font-size:13px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.code-time{font-family:var(--mono);font-size:9px;color:var(--text-dim);flex-shrink:0}
+.code-del{
+  width:22px;height:22px;border:none;background:none;
+  color:var(--text-dim);cursor:pointer;font-size:14px;
+  flex-shrink:0;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  transition:color .15s,background .15s;
+}
+.code-del:hover{color:var(--red);background:rgba(231,76,60,.1)}
+
+/* Empty state lista */
+.list-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;color:var(--text-dim);text-align:center;padding:20px;
+}
+.list-empty .big{font-size:36px;opacity:.2}
+.list-empty p{font-size:13px;line-height:1.6;font-family:var(--mono)}
+
+/* Bottom bar invio */
+.send-bar{
+  padding:10px 12px;background:var(--surface);border-top:1px solid var(--border);
+  display:flex;gap:8px;flex-shrink:0;
+}
+.btn-send{
+  flex:1;padding:13px;border:none;border-radius:8px;
+  background:var(--accent);color:#0d0d0d;
+  font-family:var(--sans);font-size:14px;font-weight:700;
+  cursor:pointer;transition:opacity .2s,transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-send:active{transform:scale(.98)}
+.btn-send:disabled{background:var(--border);color:var(--text-dim);cursor:default;transform:none}
+
+/* Toast notifiche */
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:#1a1a1a;border:1px solid var(--border);border-radius:8px;
+  padding:10px 18px;font-family:var(--mono);font-size:12px;
+  white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .2s;z-index:100;
+}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+#toast.warn{border-color:var(--accent);color:var(--accent)}
+
+/* Status bar PC */
+.pc-bar{
+  padding:6px 14px;background:var(--surface);
+  font-family:var(--mono);font-size:10px;color:var(--text-dim);
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.pc-dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim)}
+.pc-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⬡</div>
+      <div class="brand-name">SCANPC</div>
+    </div>
+    <div class="conn-pill" id="connPill">
+      <div class="conn-dot"></div>
+      <span id="connLabel">offline</span>
+    </div>
+  </header>
+
+  <!-- SETUP -->
+  <div id="setup">
+    <div class="setup-icon">📷</div>
+    <div class="setup-title">Scanner QR & Barcode</div>
+    <div class="setup-sub">Scansiona codici con la fotocamera<br>e inviali al PC in rete privata</div>
+    <div class="field">
+      <label>NOME DISPOSITIVO</label>
+      <input type="text" id="nameInput" placeholder="es. Scanner-1" maxlength="20"/>
+      <span id="changeName" style="display:none;font-size:11px;color:var(--text-dim);text-align:right;cursor:pointer;text-decoration:underline;margin-top:2px" onclick="clearName()">non sono io →</span>
+    </div>
+    <button class="btn-main" onclick="startApp()">Avvia Scanner →</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp">
+
+    <!-- Barra stato PC -->
+    <div class="pc-bar">
+      <div class="pc-dot" id="pcDot"></div>
+      <span id="pcLabel">PC offline</span>
+    </div>
+
+    <!-- Video scanner -->
+    <div id="scannerView">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="viewfinder">
+        <div class="vf-frame">
+          <div class="vf-corner tl"></div>
+          <div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div>
+          <div class="vf-corner br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+      <div class="scan-flash" id="scanFlash"></div>
+      <div class="last-scan-chip" id="lastChip"></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="scanner-toolbar">
+      <div class="scan-counter">Lista: <span id="countLabel">0</span></div>
+      <div class="toolbar-actions">
+        <button class="tb-btn" id="btnDupes" onclick="toggleDupes()">skip duplicati: ON</button>
+        <button class="tb-btn danger" id="btnClear" onclick="clearList()" disabled>svuota</button>
+      </div>
+    </div>
+
+    <!-- Lista codici -->
+    <div id="codeList">
+      <div class="list-empty" id="emptyState">
+        <div class="big">▦</div>
+        <p>Nessun codice scansionato.<br>Punta la fotocamera su un<br>QR code o barcode.</p>
+      </div>
+    </div>
+
+    <!-- Send bar -->
+    <div class="send-bar">
+      <button class="btn-send" id="btnSend" onclick="sendToPC()" disabled>
+        <span>📤</span><span id="sendLabel">Invia al PC</span>
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- jsQR: QR code affidabile su mobile -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<!-- Quagga2: barcode 1D affidabile su mobile -->
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let ws         = null;
+let myName     = '';
+let pcOnline   = false;
+let codes      = [];   // [{value, type, time}]
+let skipDupes  = true;
+let scanning   = false;
+let videoStream = null;
+let lastDecoded = '';
+let lastDecodedTime = 0;
+const DEBOUNCE_MS = 1800;
+
+// ─── Name persistence ─────────────────────────────────────────────────────────
+function clearName() {
+  localStorage.removeItem('scanpc_name');
+  document.getElementById('nameInput').value = '';
+  document.getElementById('changeName').style.display = 'none';
+}
+
+// ─── Start app ────────────────────────────────────────────────────────────────
+function startApp() {
+  myName = document.getElementById('nameInput').value.trim() || 'Scanner';
+  localStorage.setItem('scanpc_name', myName);
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('mainApp').classList.add('show');
+  connectWS();
+  startCamera();
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}?type=scanner&name=${encodeURIComponent(myName)}`);
+  ws.onopen  = () => setPill(true);
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'status') {
+      pcOnline = msg.pcConnected;
+      document.getElementById('pcDot').classList.toggle('on', pcOnline);
+      document.getElementById('pcLabel').textContent = pcOnline ? 'PC connesso' : 'PC offline';
+    }
+    if (msg.type === 'batch_ack') showToast(`✓ ${msg.count} codice/i ricevuto/i dal PC`, 'ok');
+    if (msg.type === 'error')     showToast('⚠ ' + msg.message, 'err');
+  };
+  ws.onclose = () => { setPill(false); setTimeout(connectWS, 4000); };
+  ws.onerror = () => setPill(false);
+}
+
+function setPill(on) {
+  document.getElementById('connPill').classList.toggle('connected', on);
+  document.getElementById('connLabel').textContent = on ? 'connesso' : 'offline';
+}
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
+async function startCamera() {
+  try {
+    const h = Math.round(window.innerHeight * 0.38);
+    document.getElementById('scannerView').style.height = h + 'px';
+
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = videoStream;
+    await video.play();
+
+    scanning = true;
+    requestAnimationFrame(scanFrame);
+
+  } catch (err) {
+    showToast('⚠ Fotocamera non disponibile: ' + err.message, 'err');
+    console.error('Camera:', err);
+  }
+}
+
+// ─── Scan loop: jsQR (QR) + Quagga2 inline (barcode 1D) ──────────────────────
+function scanFrame() {
+  if (!scanning) return;
+
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // ── 1. Prova QR code con jsQR ──────────────────────────────────────────
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const qr = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'dontInvert'
+    });
+    if (qr && qr.data) {
+      handleDetected(qr.data, 'QR');
+      requestAnimationFrame(scanFrame);
+      return;
+    }
+
+    // ── 2. Prova barcode 1D con Quagga2 (sincrono su ImageData) ───────────
+    try {
+      Quagga.decodeSingle({
+        src: canvas.toDataURL('image/png'),
+        numOfWorkers: 0,
+        inputStream: { size: canvas.width },
+        decoder: {
+          readers: [
+            'ean_reader',
+            'ean_8_reader',
+            'upc_reader',
+            'upc_e_reader',
+            'code_128_reader',
+            'code_39_reader',
+            'code_93_reader',
+            'codabar_reader',
+            'i2of5_reader',
+          ]
+        },
+        locate: true,
+      }, result => {
+        if (result && result.codeResult && result.codeResult.code) {
+          const format = result.codeResult.format || 'barcode';
+          handleDetected(result.codeResult.code, formatBarcode(format));
+        }
+      });
+    } catch(e) { /* nessun barcode trovato */ }
+  }
+
+  requestAnimationFrame(scanFrame);
+}
+
+function formatBarcode(f) {
+  if (!f) return 'BARCODE';
+  const map = {
+    'ean_13':'EAN13','ean_8':'EAN8','upc_a':'UPC-A','upc_e':'UPC-E',
+    'code_128':'CODE128','code_39':'CODE39','code_93':'CODE93',
+    'codabar':'CODABAR','i2of5':'ITF'
+  };
+  return map[f.toLowerCase()] || f.toUpperCase().slice(0,8);
+}
+
+function handleDetected(value, type) {
+  const now = Date.now();
+  if (value === lastDecoded && now - lastDecodedTime < DEBOUNCE_MS) return;
+  lastDecoded     = value;
+  lastDecodedTime = now;
+  onCodeScanned(value, type);
+}
+
+// ─── Codice scansionato ───────────────────────────────────────────────────────
+function onCodeScanned(value, type) {
+  // Salta duplicati se abilitato
+  if (skipDupes && codes.some(c => c.value === value)) {
+    showChip('⟳ duplicato: ' + value);
+    return;
+  }
+
+  // Flash visivo
+  flashScreen();
+
+  // Vibrazione
+  if (navigator.vibrate) navigator.vibrate(60);
+
+  // Aggiungi alla lista
+  const entry = { value, type: formatType(type), time: new Date() };
+  codes.unshift(entry); // inserisci in cima
+  renderList();
+  showChip(value);
+  updateButtons();
+}
+
+function formatType(t) {
+  if (!t) return '?';
+  t = t.toUpperCase();
+  if (t.includes('QR')) return 'QR';
+  if (t.includes('EAN_13')) return 'EAN13';
+  if (t.includes('EAN_8'))  return 'EAN8';
+  if (t.includes('UPC_A'))  return 'UPC-A';
+  if (t.includes('UPC_E'))  return 'UPC-E';
+  if (t.includes('CODE_128')) return 'CODE128';
+  if (t.includes('CODE_39'))  return 'CODE39';
+  if (t.includes('DATA_MATRIX')) return 'DATAMAT';
+  return t.slice(0,8);
+}
+
+// ─── Render lista ─────────────────────────────────────────────────────────────
+function renderList() {
+  const container = document.getElementById('codeList');
+  const empty = document.getElementById('emptyState');
+
+  // Rimuovi card esistenti
+  [...container.children].forEach(el => { if (el !== empty) el.remove(); });
+
+  if (codes.length === 0) {
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  codes.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'code-item';
+    const tc = c.type.toLowerCase().replace(/[^a-z0-9]/g, '');
+    div.innerHTML = `
+      <div class="code-num">${codes.length - i}</div>
+      <div class="code-type-badge ${tc}">${c.type}</div>
+      <div class="code-value" title="${esc(c.value)}">${esc(c.value)}</div>
+      <div class="code-time">${c.time.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+      <button class="code-del" onclick="removeCode(${i})" title="Rimuovi">×</button>`;
+    container.appendChild(div);
+  });
+
+  document.getElementById('countLabel').textContent = codes.length;
+}
+
+function removeCode(index) {
+  codes.splice(index, 1);
+  renderList();
+  updateButtons();
+}
+
+function clearList() {
+  codes = [];
+  renderList();
+  updateButtons();
+}
+
+function updateButtons() {
+  const has = codes.length > 0;
+  document.getElementById('btnClear').disabled = !has;
+  document.getElementById('btnSend').disabled  = !has;
+  document.getElementById('sendLabel').textContent = has ? `Invia ${codes.length} codice/i al PC` : 'Invia al PC';
+}
+
+// ─── Toggle duplicati ─────────────────────────────────────────────────────────
+function toggleDupes() {
+  skipDupes = !skipDupes;
+  document.getElementById('btnDupes').textContent = `skip duplicati: ${skipDupes ? 'ON' : 'OFF'}`;
+  document.getElementById('btnDupes').style.color = skipDupes ? '' : 'var(--accent2)';
+}
+
+// ─── Invia al PC ──────────────────────────────────────────────────────────────
+function sendToPC() {
+  if (!ws || ws.readyState !== 1) { showToast('⚠ Non connesso al server', 'warn'); return; }
+  if (!pcOnline)                  { showToast('⚠ PC non connesso', 'warn'); return; }
+  if (codes.length === 0)         { return; }
+
+  const payload = {
+    type: 'scan_batch',
+    codes: codes.map(c => ({ value: c.value, barcode_type: c.type, scanned_at: c.time.toISOString() })),
+    device: myName,
+    total: codes.length
+  };
+
+  ws.send(JSON.stringify(payload));
+  showToast(`📤 Invio ${codes.length} codice/i…`, 'warn');
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function flashScreen() {
+  const f = document.getElementById('scanFlash');
+  f.classList.add('flash');
+  setTimeout(() => f.classList.remove('flash'), 120);
+}
+
+function showChip(text) {
+  const chip = document.getElementById('lastChip');
+  chip.textContent = text;
+  chip.classList.add('show');
+  clearTimeout(chip._t);
+  chip._t = setTimeout(() => chip.classList.remove('show'), 2000);
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async () => {
+  const saved = localStorage.getItem('scanpc_name');
+  if (saved) {
+    document.getElementById('nameInput').value = saved;
+    document.getElementById('changeName').style.display = 'block';
+    // Auto-start se già configurato
+    startApp();
+  }
+})();
+</script>
+</body>
+</html>
