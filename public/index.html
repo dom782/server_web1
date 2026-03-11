@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ScanPC">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="/manifest.json">
+<title>ScanPC</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;500;600;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0d; --surface:#141414; --surface2:#1c1c1c; --border:#2a2a2a;
+  --accent:#f0c040; --accent2:#e05c00; --green:#2ecc71; --red:#e74c3c;
+  --text:#f0f0f0; --text-dim:#666;
+  --mono:'Share Tech Mono',monospace; --sans:'Barlow',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:32px;height:32px;background:var(--accent);clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.brand-name{font-family:var(--mono);font-size:16px;letter-spacing:2px;color:var(--accent)}
+.conn-pill{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--text-dim);transition:all .3s}
+.conn-pill.connected{color:var(--green);border-color:var(--green)}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* SETUP */
+#setup{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;gap:20px}
+.setup-icon{font-size:52px}
+.setup-title{font-size:22px;font-weight:700;letter-spacing:-0.5px;text-align:center}
+.setup-sub{font-size:13px;color:var(--text-dim);text-align:center;line-height:1.6;font-family:var(--mono)}
+.field{width:100%;display:flex;flex-direction:column;gap:6px}
+.field label{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px}
+.field input{width:100%;padding:13px 15px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:15px;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--accent)}
+.btn-main{width:100%;padding:15px;border:none;border-radius:8px;background:var(--accent);color:#0d0d0d;font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
+.btn-main:active{transform:scale(.98);opacity:.9}
+
+/* MAIN APP */
+#mainApp{flex:1;display:none;flex-direction:column;overflow:hidden}
+#mainApp.show{display:flex}
+
+/* PC STATUS BAR */
+.pc-bar{padding:6px 14px;background:var(--surface);font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pc-dot{width:6px;height:6px;border-radius:50%;background:var(--text-dim)}
+.pc-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* SCANNER VIEW - nascosto quando non attivo */
+#scannerView{position:relative;background:#000;flex-shrink:0;overflow:hidden;display:none}
+#scannerView.active{display:block}
+#video{width:100%;display:block;object-fit:cover}
+#canvas{display:none}
+
+/* Mirino */
+.viewfinder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.vf-frame{width:240px;height:160px;position:relative}
+.vf-corner{position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid;opacity:0.9}
+.vf-corner.tl{top:0;left:0;border-width:3px 0 0 3px}
+.vf-corner.tr{top:0;right:0;border-width:3px 3px 0 0}
+.vf-corner.bl{bottom:0;left:0;border-width:0 0 3px 3px}
+.vf-corner.br{bottom:0;right:0;border-width:0 3px 3px 0}
+.scan-line{position:absolute;left:10px;right:10px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);top:10px;box-shadow:0 0 8px var(--accent)}
+.scan-line.animate{animation:scanAnim 1.2s ease-in-out infinite}
+@keyframes scanAnim{0%{top:10px}50%{top:calc(100% - 12px)}100%{top:10px}}
+.scan-flash{position:absolute;inset:0;background:var(--accent);opacity:0;pointer-events:none;transition:opacity .05s}
+.scan-flash.flash{opacity:0.35}
+.last-scan-chip{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);border:1px solid var(--accent);border-radius:6px;padding:6px 14px;font-family:var(--mono);font-size:12px;color:var(--accent);white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .2s;pointer-events:none}
+.last-scan-chip.show{opacity:1}
+
+/* TASTO SCANSIONA centrale */
+#scanArea{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px;gap:14px;flex-shrink:0;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.btn-scan{
+  width:100%;max-width:320px;padding:18px;border:none;border-radius:10px;
+  background:var(--accent);color:#0d0d0d;
+  font-family:var(--sans);font-size:16px;font-weight:700;
+  cursor:pointer;transition:opacity .2s,transform .1s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  letter-spacing:0.3px;
+}
+.btn-scan:active{transform:scale(.98)}
+.btn-scan.scanning{background:var(--red);color:#fff}
+.btn-scan-icon{font-size:20px}
+.scan-hint{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center}
+
+/* TOOLBAR lista */
+.scanner-toolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.scan-counter{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.scan-counter span{color:var(--accent);font-size:15px;font-weight:bold}
+.toolbar-actions{display:flex;gap:8px}
+.tb-btn{padding:7px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tb-btn:active{transform:scale(.96)}
+.tb-btn.danger{border-color:var(--red);color:var(--red)}
+.tb-btn:disabled{opacity:.35;cursor:default}
+
+/* LISTA CODICI */
+#codeList{flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+#codeList::-webkit-scrollbar{width:3px}
+#codeList::-webkit-scrollbar-thumb{background:var(--border)}
+.code-item{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;animation:slideIn .15s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.code-num{font-family:var(--mono);font-size:10px;color:var(--text-dim);width:22px;text-align:right;flex-shrink:0}
+.code-type-badge{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;flex-shrink:0;background:var(--surface);border:1px solid var(--border);color:var(--text-dim)}
+.code-type-badge.qr{border-color:#3a9df8;color:#3a9df8}
+.code-type-badge.ean13,.code-type-badge.ean8,.code-type-badge.upca,.code-type-badge.upce{border-color:var(--accent2);color:var(--accent2)}
+.code-type-badge.code128,.code-type-badge.code39,.code-type-badge.code93{border-color:#a855f7;color:#a855f7}
+.code-value{flex:1;font-family:var(--mono);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.code-time{font-family:var(--mono);font-size:9px;color:var(--text-dim);flex-shrink:0}
+.code-del{width:22px;height:22px;border:none;background:none;color:var(--text-dim);cursor:pointer;font-size:14px;flex-shrink:0;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:color .15s}
+.code-del:active{color:var(--red)}
+
+.list-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text-dim);text-align:center;padding:20px}
+.list-empty .big{font-size:36px;opacity:.2}
+.list-empty p{font-size:13px;line-height:1.6;font-family:var(--mono)}
+
+/* SEND BAR */
+.send-bar{padding:10px 12px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.btn-send{flex:1;padding:13px;border:none;border-radius:8px;background:var(--accent);color:#0d0d0d;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-send:active{transform:scale(.98)}
+.btn-send:disabled{background:var(--border);color:var(--text-dim);cursor:default;transform:none}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-family:var(--mono);font-size:12px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .2s;z-index:100}
+#toast.show{opacity:1}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+#toast.warn{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⬡</div>
+      <div class="brand-name">SCANPC</div>
+    </div>
+    <div class="conn-pill" id="connPill">
+      <div class="conn-dot"></div>
+      <span id="connLabel">offline</span>
+    </div>
+  </header>
+
+  <!-- SETUP -->
+  <div id="setup">
+    <div class="setup-icon">📷</div>
+    <div class="setup-title">Scanner QR & Barcode</div>
+    <div class="setup-sub">Scansiona codici con la fotocamera<br>e inviali al PC in rete privata</div>
+    <div class="field">
+      <label>NOME DISPOSITIVO</label>
+      <input type="text" id="nameInput" placeholder="es. Scanner-1" maxlength="20"/>
+      <span id="changeName" style="display:none;font-size:11px;color:var(--text-dim);text-align:right;cursor:pointer;text-decoration:underline;margin-top:2px" onclick="clearName()">non sono io →</span>
+    </div>
+    <button class="btn-main" onclick="startApp()">Avvia →</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="mainApp">
+
+    <div class="pc-bar">
+      <div class="pc-dot" id="pcDot"></div>
+      <span id="pcLabel">PC offline</span>
+    </div>
+
+    <!-- Fotocamera (visibile solo durante scansione) -->
+    <div id="scannerView">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="viewfinder">
+        <div class="vf-frame">
+          <div class="vf-corner tl"></div><div class="vf-corner tr"></div>
+          <div class="vf-corner bl"></div><div class="vf-corner br"></div>
+          <div class="scan-line" id="scanLine"></div>
+        </div>
+      </div>
+      <div class="scan-flash" id="scanFlash"></div>
+      <div class="last-scan-chip" id="lastChip"></div>
+    </div>
+
+    <!-- Tasto scansiona -->
+    <div id="scanArea">
+      <button class="btn-scan" id="btnScan" onclick="toggleScan()">
+        <span class="btn-scan-icon">📷</span>
+        <span id="btnScanLabel">Scansiona codice</span>
+      </button>
+      <div class="scan-hint" id="scanHint">Premi per aprire la fotocamera</div>
+    </div>
+
+    <!-- Toolbar lista -->
+    <div class="scanner-toolbar">
+      <div class="scan-counter">Lista: <span id="countLabel">0</span></div>
+      <div class="toolbar-actions">
+        <button class="tb-btn" id="btnDupes" onclick="toggleDupes()">no duplic: ON</button>
+        <button class="tb-btn danger" id="btnClear" onclick="clearList()" disabled>svuota</button>
+      </div>
+    </div>
+
+    <!-- Lista codici -->
+    <div id="codeList">
+      <div class="list-empty" id="emptyState">
+        <div class="big">▦</div>
+        <p>Nessun codice ancora.<br>Premi il tasto per scansionare.</p>
+      </div>
+    </div>
+
+    <!-- Send bar -->
+    <div class="send-bar">
+      <button class="btn-send" id="btnSend" onclick="sendToPC()" disabled>
+        <span>📤</span><span id="sendLabel">Invia al PC</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+<script>
+let ws         = null;
+let myName     = '';
+let pcOnline   = false;
+let codes      = [];
+let skipDupes  = true;
+let isScanning  = false;
+let videoStream = null;
+let rafId       = null;
+let quaggaTimer = null;
+let quaggaBusy  = false;
+
+const DEBOUNCE_MS = 1500;
+let lastDecoded = '';
+let lastDecodedTime = 0;
+
+// ─── Name ─────────────────────────────────────────────────────────────────────
+function clearName() {
+  localStorage.removeItem('scanpc_name');
+  document.getElementById('nameInput').value = '';
+  document.getElementById('changeName').style.display = 'none';
+}
+
+// ─── Start app ────────────────────────────────────────────────────────────────
+function startApp() {
+  const input = document.getElementById('nameInput');
+  myName = (input.value || '').trim() || 'Scanner';
+  localStorage.setItem('scanpc_name', myName);
+
+  // Transizione UI immediata — non aspetta il WS
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('mainApp').classList.add('show');
+
+  // Connessione WS in background
+  try { connectWS(); } catch(e) { console.warn('WS init error:', e); }
+}
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+function connectWS() {
+  try {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url   = `${proto}//${location.host}?type=scanner&name=${encodeURIComponent(myName)}`;
+    ws = new WebSocket(url);
+
+    ws.onopen = () => setPill(true);
+
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'status') {
+          pcOnline = msg.pcConnected;
+          document.getElementById('pcDot').classList.toggle('on', pcOnline);
+          document.getElementById('pcLabel').textContent = pcOnline ? 'PC connesso' : 'PC offline';
+        }
+        if (msg.type === 'batch_ack') showToast(`✓ ${msg.count} codice/i ricevuti`, 'ok');
+        if (msg.type === 'error')     showToast('⚠ ' + msg.message, 'err');
+      } catch(e) { console.warn('WS message parse error', e); }
+    };
+
+    ws.onclose = () => {
+      setPill(false);
+      setTimeout(() => { try { connectWS(); } catch(e){} }, 4000);
+    };
+
+    ws.onerror = (e) => {
+      console.warn('WS error:', e);
+      setPill(false);
+    };
+
+  } catch(err) {
+    console.warn('connectWS failed:', err);
+    setPill(false);
+    setTimeout(() => { try { connectWS(); } catch(e){} }, 4000);
+  }
+}
+function setPill(on) {
+  document.getElementById('connPill').classList.toggle('connected', on);
+  document.getElementById('connLabel').textContent = on ? 'connesso' : 'offline';
+}
+
+// ─── Toggle scan ──────────────────────────────────────────────────────────────
+async function toggleScan() {
+  if (isScanning) {
+    stopCamera();
+  } else {
+    await openCamera();
+  }
+}
+
+async function openCamera() {
+  const btn   = document.getElementById('btnScan');
+  const label = document.getElementById('btnScanLabel');
+  const hint  = document.getElementById('scanHint');
+
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    });
+
+    const video = document.getElementById('video');
+    video.srcObject = videoStream;
+    await video.play();
+
+    // Calcola altezza view (38% schermo)
+    const h = Math.round(window.innerHeight * 0.38);
+    const sv = document.getElementById('scannerView');
+    sv.style.height = h + 'px';
+    sv.classList.add('active');
+    document.getElementById('scanLine').classList.add('animate');
+
+    isScanning = true;
+    btn.classList.add('scanning');
+    label.textContent = 'Stop scansione';
+    hint.textContent  = 'Inquadra un QR o barcode…';
+    lastDecoded = '';
+    lastDecodedTime = 0;
+
+    // Avvia i due motori in parallelo
+    startJsQRLoop();
+    startQuagga();
+
+  } catch(err) {
+    showToast('⚠ Fotocamera: ' + err.message, 'err');
+  }
+}
+
+function stopCamera() {
+  isScanning = false;
+
+  if (rafId)       { cancelAnimationFrame(rafId); rafId = null; }
+  if (quaggaTimer) { clearInterval(quaggaTimer); quaggaTimer = null; }
+  quaggaBusy = false;
+
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+
+  document.getElementById('video').srcObject = null;
+  document.getElementById('scannerView').classList.remove('active');
+  document.getElementById('scanLine').classList.remove('animate');
+
+  const btn = document.getElementById('btnScan');
+  btn.classList.remove('scanning');
+  document.getElementById('btnScanLabel').textContent = 'Scansiona codice';
+  document.getElementById('scanHint').textContent = 'Premi per aprire la fotocamera';
+}
+
+// ─── Canvas helper: ruota immagine di deg gradi ───────────────────────────────
+function drawRotated(src, deg) {
+  const w = src.width, h = src.height;
+  const c = document.createElement('canvas');
+  if (deg === 90 || deg === 270) { c.width = h; c.height = w; }
+  else { c.width = w; c.height = h; }
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(deg * Math.PI / 180);
+  ctx.drawImage(src, -w / 2, -h / 2);
+  return c;
+}
+
+// ─── Motore 1: jsQR su rAF (QR, velocissimo) ─────────────────────────────────
+function startJsQRLoop() {
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  function loop() {
+    if (!isScanning) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Prova orizzontale
+      let img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let qr  = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (qr && qr.data) { handleDetected(qr.data, 'QR'); return; }
+
+      // Prova ruotato 90° (telefono in portrait)
+      const rot = drawRotated(canvas, 90);
+      const rc  = rot.getContext('2d');
+      img = rc.getImageData(0, 0, rot.width, rot.height);
+      qr  = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+      if (qr && qr.data) { handleDetected(qr.data, 'QR'); return; }
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+  rafId = requestAnimationFrame(loop);
+}
+
+// ─── Motore 2: Quagga su setInterval (barcode 1D) ────────────────────────────
+let quaggaTimer = null;
+let quaggaBusy  = false;
+
+function startQuagga() {
+  quaggaTimer = setInterval(() => {
+    if (!isScanning || quaggaBusy) return;
+    const video  = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    if (!canvas.width || video.readyState !== video.HAVE_ENOUGH_DATA) return;
+
+    quaggaBusy = true;
+
+    // Prova su frame originale (barcode orizzontale)
+    Quagga.decodeSingle({
+      src: canvas.toDataURL('image/jpeg', 0.8),
+      numOfWorkers: 0,
+      inputStream: { size: canvas.width },
+      locator: { patchSize: 'medium', halfSample: true },
+      decoder: { readers: ['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','code_93_reader','codabar_reader','i2of5_reader'], multiple: false },
+      locate: true,
+    }, result => {
+      if (result && result.codeResult && result.codeResult.code) {
+        quaggaBusy = false;
+        handleDetected(result.codeResult.code, formatBarcode(result.codeResult.format));
+        return;
+      }
+
+      // Nessun risultato → prova ruotato 90° (barcode verticale)
+      if (!isScanning) { quaggaBusy = false; return; }
+      const rot = drawRotated(canvas, 90);
+      Quagga.decodeSingle({
+        src: rot.toDataURL('image/jpeg', 0.8),
+        numOfWorkers: 0,
+        inputStream: { size: rot.width },
+        locator: { patchSize: 'medium', halfSample: true },
+        decoder: { readers: ['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader','code_39_reader','code_93_reader','codabar_reader','i2of5_reader'], multiple: false },
+        locate: true,
+      }, result2 => {
+        quaggaBusy = false;
+        if (result2 && result2.codeResult && result2.codeResult.code) {
+          handleDetected(result2.codeResult.code, formatBarcode(result2.codeResult.format));
+        }
+      });
+    });
+  }, 400); // ogni 400ms
+}
+
+// ─── Rilevamento unificato ────────────────────────────────────────────────────
+function handleDetected(value, type) {
+  if (!value) return;
+  const now = Date.now();
+  if (value === lastDecoded && now - lastDecodedTime < DEBOUNCE_MS) return;
+  lastDecoded     = value;
+  lastDecodedTime = now;
+
+  // Aggiunge alla lista e CHIUDE la fotocamera
+  onCodeScanned(value, type);
+  stopCamera();
+}
+
+function formatBarcode(f) {
+  if (!f) return 'BARCODE';
+  const map = {'ean_13':'EAN13','ean_8':'EAN8','upc_a':'UPC-A','upc_e':'UPC-E','code_128':'CODE128','code_39':'CODE39','code_93':'CODE93','codabar':'CODABAR','i2of5':'ITF'};
+  return map[f.toLowerCase()] || f.toUpperCase().slice(0,8);
+}
+
+// ─── Codice scansionato → lista ───────────────────────────────────────────────
+function onCodeScanned(value, type) {
+  if (skipDupes && codes.some(c => c.value === value)) {
+    showToast('Duplicato ignorato: ' + value, 'warn');
+    return;
+  }
+  flashScreen();
+  if (navigator.vibrate) navigator.vibrate(80);
+  codes.unshift({ value, type, time: new Date() });
+  renderList();
+  showChip('✓ ' + value);
+  updateButtons();
+}
+
+// ─── Lista ────────────────────────────────────────────────────────────────────
+function renderList() {
+  const container = document.getElementById('codeList');
+  [...container.children].forEach(el => { if (el.id !== 'emptyState') el.remove(); });
+  document.getElementById('emptyState').style.display = codes.length ? 'none' : 'flex';
+
+  codes.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'code-item';
+    const tc = c.type.toLowerCase().replace(/[^a-z0-9]/g,'');
+    div.innerHTML = `
+      <div class="code-num">${codes.length - i}</div>
+      <div class="code-type-badge ${tc}">${c.type}</div>
+      <div class="code-value" title="${esc(c.value)}">${esc(c.value)}</div>
+      <div class="code-time">${c.time.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+      <button class="code-del" onclick="removeCode(${i})">×</button>`;
+    container.appendChild(div);
+  });
+  document.getElementById('countLabel').textContent = codes.length;
+}
+
+function removeCode(i) { codes.splice(i,1); renderList(); updateButtons(); }
+
+function clearList() { codes=[]; renderList(); updateButtons(); }
+
+function updateButtons() {
+  const has = codes.length > 0;
+  document.getElementById('btnClear').disabled = !has;
+  document.getElementById('btnSend').disabled  = !has;
+  document.getElementById('sendLabel').textContent = has ? `Invia ${codes.length} al PC` : 'Invia al PC';
+}
+
+function toggleDupes() {
+  skipDupes = !skipDupes;
+  document.getElementById('btnDupes').textContent = `no duplic: ${skipDupes?'ON':'OFF'}`;
+}
+
+// ─── Invia al PC ──────────────────────────────────────────────────────────────
+function sendToPC() {
+  if (!ws || ws.readyState !== 1) { showToast('⚠ Non connesso al server', 'warn'); return; }
+  if (!pcOnline)                  { showToast('⚠ PC non connesso', 'warn'); return; }
+  if (!codes.length)              { return; }
+
+  ws.send(JSON.stringify({
+    type: 'scan_batch',
+    codes: codes.map(c => ({ value: c.value, barcode_type: c.type, scanned_at: c.time.toISOString() })),
+    device: myName,
+    total: codes.length
+  }));
+
+  showToast(`📤 Invio ${codes.length} codice/i…`, 'warn');
+
+  // Reset lista per la prossima sessione
+  setTimeout(() => { codes=[]; renderList(); updateButtons(); }, 600);
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function flashScreen() {
+  const f = document.getElementById('scanFlash');
+  f.classList.add('flash');
+  setTimeout(() => f.classList.remove('flash'), 130);
+}
+function showChip(text) {
+  const chip = document.getElementById('lastChip');
+  chip.textContent = text;
+  chip.classList.add('show');
+  clearTimeout(chip._t);
+  chip._t = setTimeout(() => chip.classList.remove('show'), 2200);
+}
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className='', 2800);
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(() => {
+  const saved = localStorage.getItem('scanpc_name');
+  if (saved) {
+    document.getElementById('nameInput').value = saved;
+    document.getElementById('changeName').style.display = 'block';
+    // NON auto-start: l'utente preme sempre il tasto
+  }
+})();
+</script>
+</body>
+</html>
