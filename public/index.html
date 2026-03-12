@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="ScanPC">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="manifest" href="/manifest.json">
+<title>ScanPC</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d0d0d;
+  --surface:  #161616;
+  --surface2: #202020;
+  --surface3: #1a1a1a;
+  --border:   #2e2e2e;
+  --accent:   #f0c040;
+  --green:    #2ecc71;
+  --red:      #e74c3c;
+  --orange:   #e67e22;
+  --blue:     #3a9df8;
+  --text:     #f0f0f0;
+  --dim:      #666;
+  --mono:     'Share Tech Mono', monospace;
+  --sans:     'Barlow', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+#app {
+  display: flex; flex-direction: column;
+  height: 100dvh; max-width: 480px; margin: 0 auto;
+}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-hex {
+  width: 30px; height: 30px; background: var(--accent);
+  clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  flex-shrink: 0;
+}
+.brand-name { font-family: var(--mono); font-size: 15px; letter-spacing: 2px; color: var(--accent); }
+.pill {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 20px;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--dim);
+  transition: all .3s;
+}
+.pill.on { color: var(--green); border-color: var(--green); }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── SETUP ──────────────────────────────────────────────────────── */
+#setup {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 32px 24px; gap: 22px;
+}
+.s-icon { font-size: 50px; }
+.s-title { font-size: 22px; font-weight: 700; text-align: center; }
+.s-sub { font-size: 13px; color: var(--dim); text-align: center; line-height: 1.6; font-family: var(--mono); }
+.field { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.field label { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+.field input {
+  width: 100%; padding: 13px 15px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text);
+  font-family: var(--sans); font-size: 15px; outline: none;
+  transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+.change-name {
+  font-size: 11px; color: var(--dim); text-align: right;
+  cursor: pointer; text-decoration: underline; display: none;
+}
+.btn-start {
+  width: 100%; padding: 15px; border: none; border-radius: 8px;
+  background: var(--accent); color: #0d0d0d;
+  font-family: var(--sans); font-size: 16px; font-weight: 700;
+  cursor: pointer; transition: transform .1s, opacity .2s;
+}
+.btn-start:active { transform: scale(.98); opacity: .9; }
+
+/* ── MAIN ───────────────────────────────────────────────────────── */
+#main { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+#main.show { display: flex; }
+
+.pc-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--dim);
+  flex-shrink: 0;
+}
+.pc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+.pc-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+/* ── TAB BAR ────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1; padding: 10px 4px; border: none;
+  background: none; color: var(--dim);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .5px;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: color .2s, border-color .2s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.tab-btn.active { color: var(--accent); border-color: var(--accent); }
+
+.tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.tab-panel.active { display: flex; }
+
+/* ── CAMERA ─────────────────────────────────────────────────────── */
+.cam-view {
+  position: relative; background: #000;
+  overflow: hidden; flex-shrink: 0; display: none;
+}
+.cam-view.show { display: block; }
+.cam-view video { width: 100%; display: block; object-fit: cover; }
+.cam-view canvas { display: none; }
+
+.vf {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.vf-box { width: 240px; height: 160px; position: relative; }
+.vf-c {
+  position: absolute; width: 28px; height: 28px;
+  border-color: var(--accent); border-style: solid; opacity: .9;
+}
+.vf-c.tl { top:0; left:0;  border-width: 3px 0 0 3px; }
+.vf-c.tr { top:0; right:0; border-width: 3px 3px 0 0; }
+.vf-c.bl { bottom:0; left:0;  border-width: 0 0 3px 3px; }
+.vf-c.br { bottom:0; right:0; border-width: 0 3px 3px 0; }
+.vf-line {
+  position: absolute; left: 10px; right: 10px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 8px var(--accent); top: 10px;
+}
+.vf-line.search-line { --accent: var(--blue); }
+.vf-line.animate { animation: scanLine 1.2s ease-in-out infinite; }
+@keyframes scanLine {
+  0%   { top: 10px; }
+  50%  { top: calc(100% - 12px); }
+  100% { top: 10px; }
+}
+.vf-flash {
+  position: absolute; inset: 0; opacity: 0;
+  pointer-events: none; transition: opacity .06s;
+}
+.vf-flash.scan-flash { background: var(--accent); }
+.vf-flash.search-flash { background: var(--blue); }
+.vf-flash.on { opacity: .35; }
+
+.vf-chip {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.8); backdrop-filter: blur(8px);
+  border-radius: 6px; padding: 6px 14px;
+  font-family: var(--mono); font-size: 12px;
+  white-space: nowrap; max-width: 90%; overflow: hidden; text-overflow: ellipsis;
+  opacity: 0; transition: opacity .2s; pointer-events: none;
+}
+.vf-chip.scan-chip  { border: 1px solid var(--accent); color: var(--accent); }
+.vf-chip.search-chip{ border: 1px solid var(--blue);   color: var(--blue);   }
+.vf-chip.show { opacity: 1; }
+
+/* ── SCAN TAB ───────────────────────────────────────────────────── */
+#scanArea {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px; gap: 10px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.btn-scan {
+  width: 100%; max-width: 340px; padding: 16px;
+  border: none; border-radius: 9px;
+  background: var(--accent); color: #0d0d0d;
+  font-family: var(--sans); font-size: 16px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: transform .1s, opacity .15s;
+}
+.btn-scan:active { transform: scale(.98); }
+.btn-scan.stop { background: var(--red); color: #fff; }
+.scan-hint { font-family: var(--mono); font-size: 10px; color: var(--dim); text-align: center; }
+
+.toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.counter { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+.counter b { color: var(--accent); font-size: 15px; }
+.t-actions { display: flex; gap: 7px; }
+.tbtn {
+  padding: 6px 11px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--text); font-family: var(--mono); font-size: 11px;
+  cursor: pointer; transition: transform .1s; white-space: nowrap;
+}
+.tbtn:active { transform: scale(.95); }
+.tbtn.red { border-color: var(--red); color: var(--red); }
+.tbtn:disabled { opacity: .3; cursor: default; transform: none; }
+
+#list {
+  flex: 1; overflow-y: auto; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#list::-webkit-scrollbar { width: 3px; }
+#list::-webkit-scrollbar-thumb { background: var(--border); }
+
+.empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; color: var(--dim); text-align: center; padding: 20px;
+}
+.empty .ico { font-size: 36px; opacity: .2; }
+.empty p { font-size: 13px; line-height: 1.6; font-family: var(--mono); }
+
+.item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  animation: slideIn .15s ease;
+}
+@keyframes slideIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:none; } }
+.item-n { font-family: var(--mono); font-size: 10px; color: var(--dim); width: 20px; text-align: right; flex-shrink: 0; }
+.badge {
+  font-family: var(--mono); font-size: 9px; padding: 2px 6px;
+  border-radius: 3px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--dim); flex-shrink: 0;
+}
+.badge.qr   { border-color: #3a9df8; color: #3a9df8; }
+.badge.ean  { border-color: var(--orange); color: var(--orange); }
+.badge.code { border-color: #a855f7; color: #a855f7; }
+.item-val {
+  flex: 1; font-family: var(--mono); font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-time { font-family: var(--mono); font-size: 9px; color: var(--dim); flex-shrink: 0; }
+.item-del {
+  width: 22px; height: 22px; border: none; background: none;
+  color: var(--dim); font-size: 16px; cursor: pointer;
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: color .15s;
+}
+.item-del:active { color: var(--red); }
+
+.send-bar {
+  padding: 10px 12px; background: var(--surface);
+  border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.btn-send {
+  width: 100%; padding: 14px; border: none; border-radius: 8px;
+  background: var(--accent); color: #0d0d0d;
+  font-family: var(--sans); font-size: 15px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform .1s;
+}
+.btn-send:active { transform: scale(.98); }
+.btn-send:disabled { background: var(--border); color: var(--dim); cursor: default; transform: none; }
+
+/* ── SEARCH TAB ─────────────────────────────────────────────────── */
+.search-input-area {
+  padding: 12px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+}
+.search-row { display: flex; gap: 8px; align-items: center; }
+.search-input {
+  flex: 1; padding: 11px 13px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text);
+  font-family: var(--sans); font-size: 15px; outline: none;
+  transition: border-color .2s;
+}
+.search-input:focus { border-color: var(--accent); }
+.btn-cam-search {
+  padding: 11px 12px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-size: 18px; cursor: pointer;
+  transition: transform .1s, border-color .2s; flex-shrink: 0;
+}
+.btn-cam-search:active { transform: scale(.93); }
+.btn-cam-search.active { border-color: var(--blue); color: var(--blue); }
+
+.search-btns { display: flex; gap: 8px; }
+.btn-search {
+  flex: 1; padding: 11px 8px; border: none; border-radius: 8px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform .1s, opacity .2s;
+}
+.btn-search:active { transform: scale(.97); }
+.btn-search.codart { background: var(--accent); color: #0d0d0d; }
+.btn-search.descrizione {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-search:disabled { opacity: .35; cursor: default; transform: none; }
+
+/* Status ricerca */
+.search-status {
+  padding: 5px 14px; font-family: var(--mono); font-size: 10px; color: var(--dim);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; min-height: 26px;
+}
+.search-spinner {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin .7s linear infinite; display: none; flex-shrink: 0;
+}
+.search-spinner.show { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RISULTATI CON QUANTITÀ ──────────────────────────────────────── */
+#searchResults {
+  flex: 1; overflow-y: auto; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+#searchResults::-webkit-scrollbar { width: 3px; }
+#searchResults::-webkit-scrollbar-thumb { background: var(--border); }
+
+/* Barra azioni lista risultati */
+.results-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.res-count {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+}
+.res-count b { color: var(--accent); }
+.btn-clear-res {
+  padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--red); background: transparent;
+  color: var(--red); font-family: var(--mono); font-size: 10px;
+  cursor: pointer; transition: transform .1s;
+}
+.btn-clear-res:active { transform: scale(.95); }
+.btn-clear-res:disabled { opacity: .3; cursor: default; transform: none; }
+
+/* Card risultato */
+.result-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+  animation: slideIn .15s ease;
+}
+.result-card.new-item { border-color: var(--green); }
+.result-card.qty-updated { border-color: var(--blue); }
+
+.rc-top {
+  padding: 10px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.rc-header { display: flex; align-items: center; gap: 8px; }
+.rc-cod {
+  font-family: var(--mono); font-size: 13px; color: var(--accent); font-weight: 600;
+}
+.rc-desc {
+  font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3;
+}
+
+/* Riga quantità */
+.rc-qty-row {
+  display: flex; align-items: center;
+  padding: 8px 14px; gap: 10px;
+  background: var(--surface3); border-top: 1px solid var(--border);
+}
+.rc-qty-label {
+  font-family: var(--mono); font-size: 10px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;
+}
+.qty-controls {
+  display: flex; align-items: center; gap: 0; margin-left: auto;
+}
+.qty-btn {
+  width: 32px; height: 32px; border: none;
+  background: var(--surface2); color: var(--text);
+  font-size: 18px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .1s;
+  flex-shrink: 0;
+}
+.qty-btn:first-child { border-radius: 6px 0 0 6px; border: 1px solid var(--border); border-right: none; }
+.qty-btn:last-child  { border-radius: 0 6px 6px 0; border: 1px solid var(--border); border-left: none; }
+.qty-btn.minus:active { background: rgba(231,76,60,.25); transform: scale(.9); }
+.qty-btn.plus:active  { background: rgba(46,204,113,.25); transform: scale(.9); }
+.qty-value {
+  min-width: 44px; height: 32px;
+  background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--accent);
+  transition: color .2s;
+}
+.qty-value.flash-up   { color: var(--green); }
+.qty-value.flash-down { color: var(--red);   }
+
+.qty-del {
+  width: 28px; height: 28px; border: none; background: none;
+  color: var(--dim); font-size: 15px; cursor: pointer;
+  border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  transition: color .15s; margin-left: 6px;
+}
+.qty-del:active { color: var(--red); }
+
+/* Empty / no-results */
+.empty-search {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; color: var(--dim); text-align: center; padding: 20px;
+}
+.empty-search .ico { font-size: 36px; opacity: .2; }
+.empty-search p { font-size: 13px; line-height: 1.6; font-family: var(--mono); }
+
+.no-results {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 28px 20px; color: var(--dim); text-align: center;
+}
+.no-results .ico { font-size: 30px; opacity: .3; }
+.no-results p { font-family: var(--mono); font-size: 12px; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #1a1a1a; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 18px; font-family: var(--mono); font-size: 12px;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity .2s; z-index: 99;
+}
+#toast.show { opacity: 1; }
+#toast.ok   { border-color: var(--green);  color: var(--green);  }
+#toast.err  { border-color: var(--red);    color: var(--red);    }
+#toast.warn { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-hex"></div>
+      <span class="brand-name">SCANPC</span>
+    </div>
+    <div class="pill" id="pill">
+      <div class="pill-dot"></div>
+      <span id="pillLabel">offline</span>
+    </div>
+  </header>
+
+  <!-- ═══ SETUP ═══════════════════════════════════════════════════ -->
+  <div id="setup">
+    <div class="s-icon">📷</div>
+    <div class="s-title">Scanner QR &amp; Barcode</div>
+    <div class="s-sub">Scansiona codici con la fotocamera<br>e inviali al PC</div>
+    <div class="field">
+      <label>NOME DISPOSITIVO</label>
+      <input type="text" id="nameInput" placeholder="es. Scanner-1" maxlength="24">
+      <span class="change-name" id="changeName" onclick="clearName()">non sono io →</span>
+    </div>
+    <button class="btn-start" onclick="startApp()">Avvia →</button>
+  </div>
+
+  <!-- ═══ MAIN ════════════════════════════════════════════════════ -->
+  <div id="main">
+
+    <div class="pc-bar">
+      <div class="pc-dot" id="pcDot"></div>
+      <span id="pcLabel">PC offline</span>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabScanBtn" onclick="switchTab('scan')">
+        <span>📷</span> SCANSIONA
+      </button>
+      <button class="tab-btn" id="tabSearchBtn" onclick="switchTab('search')">
+        <span>🔍</span> CERCA
+      </button>
+    </div>
+
+    <!-- ─── TAB: SCANSIONA ───────────────────────────────────────── -->
+    <div class="tab-panel active" id="tabScan">
+
+      <div class="cam-view" id="camView">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="vf"><div class="vf-box">
+          <div class="vf-c tl"></div><div class="vf-c tr"></div>
+          <div class="vf-c bl"></div><div class="vf-c br"></div>
+          <div class="vf-line" id="vfLine"></div>
+        </div></div>
+        <div class="vf-flash scan-flash" id="vfFlash"></div>
+        <div class="vf-chip scan-chip"   id="vfChip"></div>
+      </div>
+
+      <div id="scanArea">
+        <button class="btn-scan" id="btnScan" onclick="toggleScan()">
+          <span id="btnIcon">📷</span>
+          <span id="btnLabel">Scansiona codice</span>
+        </button>
+        <div class="scan-hint" id="scanHint">Premi per aprire la fotocamera</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="counter">Lista: <b id="countLabel">0</b></div>
+        <div class="t-actions">
+          <button class="tbtn" id="btnDup" onclick="toggleDupes()">no dup: ON</button>
+          <button class="tbtn red" id="btnClear" onclick="clearList()" disabled>svuota</button>
+        </div>
+      </div>
+
+      <div id="list">
+        <div class="empty" id="emptyMsg">
+          <div class="ico">▦</div>
+          <p>Nessun codice scansionato.<br>Premi il tasto sopra per iniziare.</p>
+        </div>
+      </div>
+
+      <div class="send-bar">
+        <button class="btn-send" id="btnSend" onclick="sendToPC()" disabled>
+          <span>📤</span><span id="sendLabel">Invia al PC</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── TAB: CERCA ───────────────────────────────────────────── -->
+    <div class="tab-panel" id="tabSearch">
+
+      <!-- Camera ricerca -->
+      <div class="cam-view" id="camSearchView">
+        <video id="videoSearch" autoplay playsinline muted></video>
+        <canvas id="canvasSearch"></canvas>
+        <div class="vf"><div class="vf-box">
+          <div class="vf-c tl"></div><div class="vf-c tr"></div>
+          <div class="vf-c bl"></div><div class="vf-c br"></div>
+          <div class="vf-line search-line" id="vfLineSearch"></div>
+        </div></div>
+        <div class="vf-flash search-flash" id="vfFlashS"></div>
+        <div class="vf-chip search-chip"   id="vfChipS"></div>
+      </div>
+
+      <!-- Input ricerca -->
+      <div class="search-input-area">
+        <div class="search-row">
+          <input type="text" class="search-input" id="searchInput"
+                 placeholder="Codice articolo o descrizione…"
+                 oninput="onSearchInput()"
+                 onkeydown="if(event.key==='Enter') searchByCodArt()">
+          <button class="btn-cam-search" id="btnCamSearch"
+                  title="Scansiona per cercare" onclick="toggleScanSearch()">📷</button>
+        </div>
+        <div class="search-btns">
+          <button class="btn-search codart"      id="btnSearchCod"  onclick="searchByCodArt()" disabled>
+            <span>🏷</span> Cod. Articolo
+          </button>
+          <button class="btn-search descrizione" id="btnSearchDesc" onclick="searchByDesc()" disabled>
+            <span>📝</span> Descrizione
+          </button>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div class="search-status" id="searchStatus">
+        <div class="search-spinner" id="searchSpinner"></div>
+        <span id="searchStatusText">Inserisci testo e scegli il tipo di ricerca</span>
+      </div>
+
+      <!-- Toolbar risultati -->
+      <div class="results-toolbar">
+        <div class="res-count">Trovati: <b id="resCount">0</b></div>
+        <button class="btn-clear-res" id="btnClearRes" onclick="clearResults()" disabled>
+          svuota lista
+        </button>
+      </div>
+
+      <!-- Lista risultati con quantità -->
+      <div id="searchResults">
+        <div class="empty-search" id="emptySearch">
+          <div class="ico">🔍</div>
+          <p>Nessun risultato.<br>Cerca per codice, descrizione<br>o scansiona QR / barcode.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Scanner libs -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+//  STATO GLOBALE
+// ══════════════════════════════════════════════════════════════════
+
+let ws         = null;
+let myName     = '';
+let pcOnline   = false;
+
+// ── Tab Scansiona ─────────────────────────────────────────────────
+let codes      = [];
+let skipDupes  = true;
+let isScanning = false;
+let stream     = null;
+let rafId      = null;
+let qTimer     = null;
+let qBusy      = false;
+let lastVal    = '';
+let lastTime   = 0;
+const DEBOUNCE = 1500;
+
+// ── Tab Cerca ────────────────────────────────────────────────────
+let isScanSearch  = false;
+let streamSearch  = null;
+let rafSearchId   = null;
+let qTimerS       = null;
+let qBusyS        = false;
+let lastScanVal   = '';
+let lastScanTime  = 0;
+let searchLoading = false;
+
+/**
+ * Mappa CodArt → { codArt, descrizione, qty, cardId }
+ * La lista risultati è persistente nella sessione: nuove ricerche
+ * aggiungono articoli o incrementano la quantità se già presenti.
+ */
+const resultMap = new Map();   // key = codArt (uppercase)
+let   resultOrder = [];        // ordine di inserimento per il render
+
+// ══════════════════════════════════════════════════════════════════
+//  DOM HELPERS
+// ══════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+let toastTm;
+function toast(msg, type = '') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(toastTm);
+  toastTm = setTimeout(() => t.className = '', 3000);
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════════════════════════
+function clearName() {
+  localStorage.removeItem('scanpc_name');
+  $('nameInput').value = '';
+  $('changeName').style.display = 'none';
+}
+
+function startApp() {
+  myName = ($('nameInput').value || '').trim() || 'Scanner';
+  localStorage.setItem('scanpc_name', myName);
+  $('setup').style.display = 'none';
+  $('main').classList.add('show');
+  connectWS();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TAB
+// ══════════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  if (isScanning)   stopCamera();
+  if (isScanSearch) stopScanSearch();
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  $('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+  $(tab === 'scan' ? 'tabScanBtn' : 'tabSearchBtn').classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ══════════════════════════════════════════════════════════════════
+function connectWS() {
+  try {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${location.host}?type=scanner&name=${encodeURIComponent(myName)}`);
+
+    ws.onopen = () => {
+      $('pill').classList.add('on');
+      $('pillLabel').textContent = 'connesso';
+    };
+
+    ws.onmessage = e => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'status') {
+          pcOnline = !!msg.pcConnected;
+          $('pcDot').classList.toggle('on', pcOnline);
+          $('pcLabel').textContent = pcOnline ? 'PC connesso' : 'PC offline';
+        }
+        if (msg.type === 'batch_ack')      toast(`✓ ${msg.count} codici ricevuti dal PC`, 'ok');
+        if (msg.type === 'error')          toast('⚠ ' + msg.message, 'err');
+        if (msg.type === 'search_response') onSearchResponse(msg);
+      } catch(ex) {}
+    };
+
+    ws.onclose = () => {
+      $('pill').classList.remove('on');
+      $('pillLabel').textContent = 'offline';
+      setTimeout(connectWS, 4000);
+    };
+    ws.onerror = () => {
+      $('pill').classList.remove('on');
+      $('pillLabel').textContent = 'offline';
+    };
+  } catch(ex) {
+    setTimeout(connectWS, 4000);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CAMERA — TAB SCANSIONA
+// ══════════════════════════════════════════════════════════════════
+async function toggleScan() {
+  if (isScanning) stopCamera(); else await openCamera();
+}
+
+async function openCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:'environment' }, width:{ideal:1280}, height:{ideal:720} }
+    });
+    const video = $('video');
+    video.srcObject = stream; await video.play();
+    $('camView').style.height = Math.round(window.innerHeight * 0.36) + 'px';
+    $('camView').classList.add('show');
+    $('vfLine').classList.add('animate');
+    isScanning = true; lastVal = ''; lastTime = 0;
+    $('btnScan').classList.add('stop');
+    $('btnIcon').textContent  = '⏹';
+    $('btnLabel').textContent = 'Stop scansione';
+    $('scanHint').textContent  = 'Inquadra QR o barcode…';
+    startJsQR('video','canvas', v => onDetected(v, 'QR'), () => isScanning, id => rafId = id, () => rafId);
+    startQuagga('canvas', () => isScanning, () => qBusy, v => qBusy=v,
+                v => onDetected(v.code, fmt(v.format)), id => qTimer=id);
+  } catch(err) { toast('⚠ Fotocamera: ' + err.message, 'err'); }
+}
+
+function stopCamera() {
+  isScanning = false;
+  if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
+  if (qTimer)  { clearInterval(qTimer); qTimer = null; }
+  qBusy = false;
+  if (stream)  { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $('video').srcObject = null;
+  $('camView').classList.remove('show');
+  $('vfLine').classList.remove('animate');
+  $('btnScan').classList.remove('stop');
+  $('btnIcon').textContent  = '📷';
+  $('btnLabel').textContent = 'Scansiona codice';
+  $('scanHint').textContent  = 'Premi per aprire la fotocamera';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CAMERA — TAB CERCA
+// ══════════════════════════════════════════════════════════════════
+async function toggleScanSearch() {
+  if (isScanSearch) stopScanSearch(); else await openScanSearch();
+}
+
+async function openScanSearch() {
+  // Apre la camera senza bloccare: il check pcOnline viene fatto
+  // al momento dell'invio in sendSearchRequest(), non qui.
+  try {
+    streamSearch = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:'environment' }, width:{ideal:1280}, height:{ideal:720} }
+    });
+    const video = $('videoSearch');
+    video.srcObject = streamSearch; await video.play();
+    $('camSearchView').style.height = Math.round(window.innerHeight * 0.36) + 'px';
+    $('camSearchView').classList.add('show');
+    $('vfLineSearch').classList.add('animate');
+    isScanSearch = true; lastScanVal = ''; lastScanTime = 0;
+    $('btnCamSearch').classList.add('active');
+    setSearchStatus('Inquadra QR o barcode per cercare…', false);
+
+    // BUG FIX: uniforma il contratto dei callback.
+    // jsQR  → onDetectedSearch(stringa, 'QR')
+    // Quagga → onDetectedSearch(stringa, formato)  — estrae .code qui, non dentro onDetectedSearch
+    startJsQR('videoSearch','canvasSearch',
+      v => onDetectedSearch(v, 'QR'),
+      () => isScanSearch,
+      id => rafSearchId = id, () => rafSearchId);
+    startQuagga('canvasSearch', () => isScanSearch, () => qBusyS, v => qBusyS = v,
+      v => onDetectedSearch(v.code, fmt(v.format)), id => qTimerS = id);
+
+  } catch(err) { toast('⚠ Fotocamera: ' + err.message, 'err'); }
+}
+
+function stopScanSearch() {
+  isScanSearch = false;
+  if (rafSearchId) { cancelAnimationFrame(rafSearchId); rafSearchId = null; }
+  if (qTimerS)     { clearInterval(qTimerS); qTimerS = null; }
+  qBusyS = false;
+  if (streamSearch) { streamSearch.getTracks().forEach(t=>t.stop()); streamSearch=null; }
+  $('videoSearch').srcObject = null;
+  $('camSearchView').classList.remove('show');
+  $('vfLineSearch').classList.remove('animate');
+  $('btnCamSearch').classList.remove('active');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  MOTORI SCAN (condivisi, parametrizzati)
+// ══════════════════════════════════════════════════════════════════
+function startJsQR(videoId, canvasId, onFound, isActive, setRaf, getRaf) {
+  const video  = $(videoId);
+  const canvas = $(canvasId);
+  const ctx    = canvas.getContext('2d', { willReadFrequently:true });
+  function tick() {
+    if (!isActive()) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      let id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let qr = jsQR(id.data, id.width, id.height, { inversionAttempts:'dontInvert' });
+      if (qr && qr.data) { onFound(qr.data); return; }
+      const r = rotateCanvas(canvas, 90);
+      id = r.getContext('2d').getImageData(0, 0, r.width, r.height);
+      qr = jsQR(id.data, id.width, id.height, { inversionAttempts:'dontInvert' });
+      if (qr && qr.data) { onFound(qr.data); return; }
+    }
+    setRaf(requestAnimationFrame(tick));
+  }
+  setRaf(requestAnimationFrame(tick));
+}
+
+function startQuagga(canvasId, isActive, isBusy, setBusy, onFound, setTimer) {
+  const READERS = ['ean_reader','ean_8_reader','upc_reader','upc_e_reader',
+                   'code_128_reader','code_39_reader','code_93_reader','codabar_reader','i2of5_reader'];
+  const tryDec = (src, cb) => Quagga.decodeSingle({
+    src, numOfWorkers:0, inputStream:{size:800},
+    locator:{patchSize:'medium',halfSample:true},
+    decoder:{readers:READERS}, locate:true
+  }, cb);
+
+  setTimer(setInterval(() => {
+    if (!isActive() || isBusy()) return;
+    const canvas = $(canvasId);
+    if (!canvas.width) return;
+    setBusy(true);
+    tryDec(canvas.toDataURL('image/jpeg', 0.85), r1 => {
+      if (r1 && r1.codeResult && r1.codeResult.code) {
+        setBusy(false);
+        onFound({ code: r1.codeResult.code, format: r1.codeResult.format });
+        return;
+      }
+      if (!isActive()) { setBusy(false); return; }
+      tryDec(rotateCanvas($(canvasId), 90).toDataURL('image/jpeg', 0.85), r2 => {
+        setBusy(false);
+        if (r2 && r2.codeResult && r2.codeResult.code)
+          onFound({ code: r2.codeResult.code, format: r2.codeResult.format });
+      });
+    });
+  }, 400));
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ON DETECTED — SCAN (tab Scansiona)
+// ══════════════════════════════════════════════════════════════════
+function onDetected(value, type) {
+  if (!value) return;
+  const now = Date.now();
+  if (value === lastVal && now - lastTime < DEBOUNCE) return;
+  lastVal = value; lastTime = now;
+
+  if (skipDupes && codes.some(c => c.value === value)) {
+    toast('Duplicato: ' + value, 'warn'); stopCamera(); return;
+  }
+
+  flashEl('vfFlash'); vibrate();
+  showChip('vfChip', '✓ ' + value);
+  codes.unshift({ value, type, time: new Date() });
+  stopCamera();
+  renderList(); updateButtons();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  ON DETECTED — SEARCH CAMERA
+//
+//  Chiamato da:
+//    jsQR   → onDetectedSearch(stringa, 'QR')
+//    Quagga → onDetectedSearch(stringa, 'EAN13'|'CODE128'|...)
+//
+//  Logica:
+//    type === 'QR'  → il QR contiene direttamente il CodArt
+//                     → search_type: "cod_art", source: "qr"
+//    altrimenti     → barcode fisico → lookup su MAGArticoliBarCode
+//                     → search_type: "barcode", source: "barcode"
+// ══════════════════════════════════════════════════════════════════
+function onDetectedSearch(value, type) {
+  // Sicurezza: value deve essere una stringa non vuota
+  if (!value || typeof value !== 'string' || !value.trim()) return;
+
+  const now = Date.now();
+  if (value === lastScanVal && now - lastScanTime < DEBOUNCE) return;
+  lastScanVal = value; lastScanTime = now;
+
+  flashEl('vfFlashS'); vibrate();
+  showChip('vfChipS', (type === 'QR' ? '🔍 QR: ' : '🔍 BC: ') + value);
+
+  // Popola il campo di testo con il valore scansionato
+  $('searchInput').value = value;
+  onSearchInput();
+
+  // Chiude la fotocamera prima di inviare la richiesta
+  stopScanSearch();
+
+  // Smista al tipo di ricerca corretto e invia al PC via WebSocket
+  const isQR = type === 'QR';
+  sendSearchRequest(value.trim(), isQR ? 'cod_art' : 'barcode', isQR ? 'qr' : 'barcode');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RICERCA MANUALE
+// ══════════════════════════════════════════════════════════════════
+function onSearchInput() {
+  const has = $('searchInput').value.trim().length > 0;
+  $('btnSearchCod').disabled  = !has;
+  $('btnSearchDesc').disabled = !has;
+}
+
+function searchByCodArt() {
+  const q = $('searchInput').value.trim();
+  if (q) sendSearchRequest(q, 'cod_art', 'manual');
+}
+
+function searchByDesc() {
+  const q = $('searchInput').value.trim();
+  if (q) sendSearchRequest(q, 'descrizione', 'manual');
+}
+
+function sendSearchRequest(query, searchType, source) {
+  if (!ws || ws.readyState !== 1) { toast('⚠ Non connesso al server', 'warn'); return; }
+  if (!pcOnline)                  { toast('⚠ PC non connesso', 'warn'); return; }
+  searchLoading = true;
+  ws.send(JSON.stringify({
+    type: 'search_request',
+    request_id: uid(),
+    search_type: searchType,
+    query, source
+  }));
+  const label = searchType === 'cod_art' ? 'codice' : searchType === 'descrizione' ? 'descrizione' : 'barcode';
+  setSearchStatus(`Ricerca ${label}: "${query}"…`, true);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RISPOSTA RICERCA
+// ══════════════════════════════════════════════════════════════════
+function onSearchResponse(msg) {
+  searchLoading = false;
+
+  if (msg.error) {
+    setSearchStatus('⚠ ' + msg.error, false);
+    toast('⚠ ' + msg.error, 'err');
+    return;
+  }
+
+  const results = msg.results || [];
+  const found   = msg.found  || 0;
+  const label   = { cod_art:'codice', descrizione:'descrizione', barcode:'barcode' }[msg.search_type] || '';
+
+  if (found === 0) {
+    setSearchStatus(`Nessun risultato per "${msg.query}"`, false);
+    // Mostra solo il messaggio se la lista è vuota
+    if (resultMap.size === 0) renderResults([]);
+    return;
+  }
+
+  setSearchStatus(`${found} risultato/i trovati per "${msg.query}" (${label})`, false);
+
+  // ── Aggiorna la mappa: accumula quantità ─────────────────────────
+  const newlyAdded = [];
+  const qtyBumped  = [];
+
+  results.forEach(a => {
+    const key = (a.cod_art || '').toUpperCase();
+    if (!key) return;
+    if (resultMap.has(key)) {
+      // Articolo già presente → incrementa quantità
+      resultMap.get(key).qty += 1;
+      qtyBumped.push(key);
+    } else {
+      // Nuovo articolo
+      resultMap.set(key, { codArt: a.cod_art, descrizione: a.descrizione, qty: 1 });
+      resultOrder.push(key);
+      newlyAdded.push(key);
+    }
+  });
+
+  renderAllResults(newlyAdded, qtyBumped);
+  updateResCount();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RENDER RISULTATI CON QUANTITÀ
+// ══════════════════════════════════════════════════════════════════
+
+/** Render completo (primo caricamento o svuota). */
+function renderResults(results) {
+  const container = $('searchResults');
+  [...container.children].forEach(el => { if (el.id !== 'emptySearch') el.remove(); });
+
+  if (results.length === 0 && resultMap.size === 0) {
+    $('emptySearch').style.display = 'flex';
+    updateResCount();
+    return;
+  }
+  $('emptySearch').style.display = 'none';
+
+  results.forEach(a => {
+    const key = (a.cod_art || '').toUpperCase();
+    container.appendChild(buildCard(key, a.cod_art, a.descrizione, 1, false));
+  });
+  updateResCount();
+}
+
+/** Aggiornamento incrementale: aggiunge nuovi, aggiorna qty esistenti. */
+function renderAllResults(newKeys, updatedKeys) {
+  const container = $('searchResults');
+  $('emptySearch').style.display = 'none';
+
+  // Aggiorna qtà card già nel DOM
+  updatedKeys.forEach(key => {
+    const qtyEl = container.querySelector(`[data-key="${key}"] .qty-value`);
+    if (qtyEl) {
+      qtyEl.textContent = resultMap.get(key).qty;
+      qtyEl.classList.remove('flash-up', 'flash-down');
+      void qtyEl.offsetWidth; // force reflow
+      qtyEl.classList.add('flash-up');
+      setTimeout(() => qtyEl.classList.remove('flash-up'), 600);
+      // Highlight bordo card
+      const card = container.querySelector(`[data-key="${key}"]`);
+      if (card) {
+        card.classList.add('qty-updated');
+        setTimeout(() => card.classList.remove('qty-updated'), 1000);
+      }
+    }
+  });
+
+  // Inserisce nuove card in testa
+  newKeys.slice().reverse().forEach(key => {
+    const item = resultMap.get(key);
+    const card = buildCard(key, item.codArt, item.descrizione, item.qty, true);
+    container.insertBefore(card, container.firstChild);
+  });
+}
+
+/** Costruisce una card DOM per un articolo. */
+function buildCard(key, codArt, descrizione, qty, isNew) {
+  const card = document.createElement('div');
+  card.className = 'result-card' + (isNew ? ' new-item' : '');
+  card.dataset.key = key;
+  if (isNew) setTimeout(() => card.classList.remove('new-item'), 1000);
+
+  card.innerHTML = `
+    <div class="rc-top">
+      <div class="rc-header">
+        <div class="rc-cod">${esc(codArt)}</div>
+      </div>
+      <div class="rc-desc">${esc(descrizione)}</div>
+    </div>
+    <div class="rc-qty-row">
+      <span class="rc-qty-label">Qtà</span>
+      <div class="qty-controls">
+        <button class="qty-btn minus" onclick="changeQty('${key}',-1)">−</button>
+        <div class="qty-value" id="qty-${key}">${qty}</div>
+        <button class="qty-btn plus"  onclick="changeQty('${key}',+1)">+</button>
+      </div>
+      <button class="qty-del" onclick="removeResult('${key}')" title="Rimuovi">×</button>
+    </div>`;
+  return card;
+}
+
+/** Incrementa o decrementa la quantità di un articolo nella lista risultati. */
+function changeQty(key, delta) {
+  const item = resultMap.get(key);
+  if (!item) return;
+
+  item.qty = Math.max(0, item.qty + delta);
+
+  const qtyEl = document.getElementById('qty-' + key);
+  if (qtyEl) {
+    qtyEl.textContent = item.qty;
+    const cls = delta > 0 ? 'flash-up' : 'flash-down';
+    qtyEl.classList.remove('flash-up', 'flash-down');
+    void qtyEl.offsetWidth;
+    qtyEl.classList.add(cls);
+    setTimeout(() => qtyEl.classList.remove(cls), 600);
+  }
+
+  // Se qty arriva a 0 rimuovi dopo breve delay (conferma visiva)
+  if (item.qty === 0) {
+    setTimeout(() => removeResult(key), 500);
+  }
+}
+
+/** Rimuove un articolo dalla lista risultati. */
+function removeResult(key) {
+  resultMap.delete(key);
+  resultOrder = resultOrder.filter(k => k !== key);
+  const card = document.querySelector(`[data-key="${key}"]`);
+  if (card) card.remove();
+  updateResCount();
+  if (resultMap.size === 0) $('emptySearch').style.display = 'flex';
+}
+
+/** Svuota tutta la lista risultati. */
+function clearResults() {
+  resultMap.clear();
+  resultOrder = [];
+  const container = $('searchResults');
+  [...container.children].forEach(el => { if (el.id !== 'emptySearch') el.remove(); });
+  $('emptySearch').style.display = 'flex';
+  updateResCount();
+  setSearchStatus('Lista svuotata.', false);
+}
+
+function updateResCount() {
+  $('resCount').textContent = resultMap.size;
+  $('btnClearRes').disabled = resultMap.size === 0;
+}
+
+function setSearchStatus(text, loading = false) {
+  $('searchStatusText').textContent = text;
+  $('searchSpinner').classList.toggle('show', loading);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  SCAN LIST (tab Scansiona)
+// ══════════════════════════════════════════════════════════════════
+function renderList() {
+  const container = $('list');
+  [...container.children].forEach(el => { if (el.id !== 'emptyMsg') el.remove(); });
+  $('emptyMsg').style.display = codes.length ? 'none' : 'flex';
+  codes.forEach((c, i) => {
+    const t  = c.type.toLowerCase().replace(/[^a-z0-9]/g,'');
+    const bc = t==='qr' ? 'qr' : (t.startsWith('ean')||t.startsWith('upc')) ? 'ean' : 'code';
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `
+      <div class="item-n">${codes.length - i}</div>
+      <div class="badge ${bc}">${c.type}</div>
+      <div class="item-val" title="${esc(c.value)}">${esc(c.value)}</div>
+      <div class="item-time">${c.time.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+      <button class="item-del" onclick="removeCode(${i})">×</button>`;
+    container.appendChild(div);
+  });
+  $('countLabel').textContent = codes.length;
+}
+
+function removeCode(i) { codes.splice(i,1); renderList(); updateButtons(); }
+function clearList()   { codes = [];        renderList(); updateButtons(); }
+
+function updateButtons() {
+  const has = codes.length > 0;
+  $('btnClear').disabled = !has;
+  $('btnSend').disabled  = !has;
+  $('sendLabel').textContent = has ? `Invia ${codes.length} codice/i al PC` : 'Invia al PC';
+}
+
+function toggleDupes() {
+  skipDupes = !skipDupes;
+  $('btnDup').textContent = `no dup: ${skipDupes ? 'ON' : 'OFF'}`;
+}
+
+function sendToPC() {
+  if (!ws || ws.readyState !== 1) { toast('⚠ Non connesso al server', 'warn'); return; }
+  if (!pcOnline)                  { toast('⚠ PC non connesso', 'warn'); return; }
+  if (!codes.length)              return;
+  ws.send(JSON.stringify({
+    type: 'scan_batch', device: myName, total: codes.length,
+    codes: codes.map(c => ({ value: c.value, barcode_type: c.type, scanned_at: c.time.toISOString() }))
+  }));
+  toast(`📤 Invio ${codes.length} codice/i…`, 'warn');
+  setTimeout(() => { codes = []; renderList(); updateButtons(); }, 500);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════════════
+function rotateCanvas(src, deg) {
+  const w = src.width, h = src.height;
+  const c = document.createElement('canvas');
+  if (deg === 90 || deg === 270) { c.width=h; c.height=w; }
+  else { c.width=w; c.height=h; }
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width/2, c.height/2);
+  ctx.rotate(deg * Math.PI / 180);
+  ctx.drawImage(src, -w/2, -h/2);
+  return c;
+}
+
+function fmt(f) {
+  if (!f) return 'BARCODE';
+  const m = { ean_13:'EAN13', ean_8:'EAN8', upc_a:'UPC-A', upc_e:'UPC-E',
+              code_128:'CODE128', code_39:'CODE39', code_93:'CODE93',
+              codabar:'CODABAR', i2of5:'ITF' };
+  return m[f.toLowerCase()] || f.toUpperCase().slice(0,8);
+}
+
+function flashEl(id) {
+  const el = $(id);
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 130);
+}
+
+function vibrate() {
+  if (navigator.vibrate) navigator.vibrate(80);
+}
+
+function showChip(id, text) {
+  const c = $(id);
+  c.textContent = text;
+  c.classList.add('show');
+  clearTimeout(c._t);
+  c._t = setTimeout(() => c.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+(() => {
+  const saved = localStorage.getItem('scanpc_name');
+  if (saved) {
+    $('nameInput').value = saved;
+    $('changeName').style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
